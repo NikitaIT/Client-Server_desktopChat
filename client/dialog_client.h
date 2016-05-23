@@ -31,7 +31,7 @@ private slots:
 
     void on_pbAddFile_clicked();
 signals:
-void fileFromGui(QFile &file, const QStringList &users);//+++++++++++
+    void fileFromGui(QFile &file, const QStringList &users);//+++++++++++
 private:
     Ui::Dialog *ui;
     QTcpSocket *_sok;

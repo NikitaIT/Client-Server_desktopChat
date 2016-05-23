@@ -164,14 +164,16 @@ void MyClient::onReadyRead()
 //        static const quint8 comPublicServerFile = 12;
 //        static const quint8 comPrivateServerFile = 13;
 
-        //от текущего пользователя пришло сообщение для всех
+        //от текущего пользователя пришел файл для всех
         case comFileToAll:
         {
+            QString filename;
+            in >> filename;
             QByteArray file_ByteArray;
             in >> file_ByteArray;
-            QFile file;
+            QFile file(filename);
             file.write(file_ByteArray);
-            //отправляем его всем
+            //переотправляем его всем
             _serv->doSendToAllFile(file, _name);
             //обновляем лог событий
             emit fileToGui(file, _name, QStringList());
@@ -182,11 +184,14 @@ void MyClient::onReadyRead()
         {
             QString users_in;
             in >> users_in;
+            QString filename;
+            in >> filename;
             QByteArray file_ByteArray;
             in >> file_ByteArray;
-            QFile file;
+            QFile file(filename);
+            file.open(QIODevice::WriteOnly | QIODevice::Append);
             file.write(file_ByteArray);
-            //разбиваем строку на имена
+            file.close();
             QStringList users = users_in.split(",");
             //отправляем нужным
             _serv->doSendFileToUsers(file, users, _name);

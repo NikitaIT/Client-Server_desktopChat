@@ -65,12 +65,18 @@ void MyServer::doSendToAllMessage(QString message, QString fromUsername)
         if (_clients.at(i)->getAutched())
             _clients.at(i)->_sok->write(block);
 }
-
+// отправление клиентам size 0 comFileToUsers Sender filename file
 void MyServer::doSendToAllFile(QFile &file, QString fromUsername)
 {
     QByteArray block;
     QDataStream out(&block, QIODevice::WriteOnly);
-    out << (quint16)0 << MyClient::comFileToAll << fromUsername << file.readAll();
+    file.open(QIODevice::ReadOnly);
+    out << (quint16)0;
+    out << MyClient::comFileToAll;
+    out << fromUsername;
+    out <<file.fileName();
+    out << file.readAll();
+    file.close();
     out.device()->seek(0);
     out << (quint16)(block.size() - sizeof(quint16));
     for (int i = 0; i < _clients.length(); ++i)
@@ -121,17 +127,29 @@ void MyServer::doSendMessageToUsers(QString message, const QStringList &users, Q
         else if (_clients.at(j)->getName() == fromUsername)
             _clients.at(j)->_sok->write(blockToSender);
 }
-
+// отправление выбранным клиентам size 0 comFileToUsers Sender filename file
 void MyServer::doSendFileToUsers(QFile &file, const QStringList &users, QString fromUsername)
 {
     QByteArray block, blockToSender;
     QDataStream out(&block, QIODevice::WriteOnly);
-    out << (quint16)0 << MyClient::comFileToUsers << fromUsername << file.readAll();
+    out << (quint16)0;
+    out << MyClient::comFileToUsers;
+    out << fromUsername;
+    file.open(QIODevice::ReadOnly);
+    out << file.fileName();
+    out << file.readAll();
     out.device()->seek(0);
-    out << (quint16)(block.size() - sizeof(quint16));//размер блока
+    file.close();
+    out << (quint16)(block.size() - sizeof(quint16));
 
     QDataStream outToSender(&blockToSender, QIODevice::WriteOnly);
-    outToSender << (quint16)0 << MyClient::comFileToUsers << users.join(",") << file.readAll();
+    outToSender << (quint16)0;
+    outToSender << MyClient::comFileToUsers;
+    outToSender << users.join(",");
+    file.open(QIODevice::ReadOnly);
+    outToSender << file.fileName();
+    outToSender << file.readAll();
+    file.close();
     outToSender.device()->seek(0);
     outToSender << (quint16)(blockToSender.size() - sizeof(quint16));
 
@@ -176,7 +194,7 @@ void MyServer::incomingConnection(qintptr handle)
         connect(client, SIGNAL(addUserToGui(QString)), _widget, SLOT(onAddUserToGui(QString)));
         connect(client, SIGNAL(removeUserFromGui(QString)), _widget, SLOT(onRemoveUserFromGui(QString)));
         connect(client, SIGNAL(messageToGui(QString,QString,QStringList)), _widget, SLOT(onMessageToGui(QString,QString,QStringList)));
-    connect(client, SIGNAL(fileToGui(QFile, QString,QStringList)), _widget, SLOT(onAddFileToGui(QFile,QColor)));
+        connect(client, SIGNAL(fileToGui(QFile, QString,QStringList)), _widget, SLOT(onAddFileToGui(QFile,QColor)));
     }
     connect(client, SIGNAL(removeUser(MyClient*)), this, SLOT(onRemoveUser(MyClient*)));
     _clients.append(client);

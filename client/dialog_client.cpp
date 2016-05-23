@@ -40,22 +40,16 @@ void Dialog::onSokDisplayError(QAbstractSocket::SocketError socketError)
 void Dialog::onSokReadyRead()
 {
     QDataStream in(_sok);
-    //???? ????????? ????? ???? ?????? 2 ????? ??? ??? ??????
     if (_blockSize == 0) {
-        //???? ?????? ?????? 2 ???? ???? ???? ????? 2 ?????
         if (_sok->bytesAvailable() < (int)sizeof(quint16))
             return;
-        //????????? ?????? (2 ?????)
         in >> _blockSize;
         qDebug() << "_blockSize now " << _blockSize;
     }
-    //???? ???? ???? ??????? ?????????
     if (_sok->bytesAvailable() < _blockSize)
         return;
     else
-        //????? ????????? ????? ????
         _blockSize = 0;
-    //3 ???? - ??????? ???????
     quint8 command;
     in >> command;
     qDebug() << "Received command " << command;
@@ -145,6 +139,40 @@ void Dialog::onSokReadyRead()
             _sok->disconnectFromHost();
         }
         break;
+        //получаем comFileToAll sender filename file size-1
+        case MyClient::comFileToAll:
+        {
+            QString user;
+            in >> user;
+            QString filename;
+            in >>filename;
+            QByteArray file_ByteArray;
+            in >> file_ByteArray;
+            QFile file(filename);
+            file.open(QIODevice::WriteOnly | QIODevice::Append);
+            file.write(file_ByteArray);
+            file.close();
+            onAddFileToGui(file,Qt::gray);
+            onAddLogToGui("["+user+"] прислал всем файл ", Qt::blue);
+        }
+        break;
+        //получаем comFileToUsers sender filename file size-1
+        case MyClient::comFileToUsers:
+        {
+            QString user;
+            in >> user;
+            QString filename;
+            in >>filename;
+            QByteArray file_ByteArray;
+            in >> file_ByteArray;
+            QFile file(filename);
+            file.open(QIODevice::WriteOnly | QIODevice::Append);
+            file.write(file_ByteArray);
+            file.close();
+            onAddLogToGui("<"+user+"> прислал файл"+ file.fileName(), Qt::gray);
+            onAddFileToGui(file,Qt::red);
+        }
+        break;
     }
 }
 
@@ -223,28 +251,45 @@ void Dialog::onAddLogToGui(QString text, QColor color)
     ui->lwLog->insertItem(0, QTime::currentTime().toString()+" "+text);
     ui->lwLog->item(0)->setTextColor(color);
 }
-
+//oтправляем 0 comFileToAll file size-1
+//отправляем 0 comFileToUsers selectedUsers file size-1
 void Dialog::on_pbAddFile_clicked()
 {
     QString fileName = QFileDialog::getOpenFileName(this,
         tr("Open Image"), "/home/jana", tr("Files (*)"));
     QFile file(fileName);
     if (!file.open(QIODevice::ReadOnly)) return;
+    file.open(QIODevice::ReadOnly);
     if (ui->lwUsers->count() == 0)
     {
         QMessageBox::information(this, "", "No clients connected");
         return;
     }
-    QStringList l;
-    if (!ui->cbToAll->isChecked())
-        foreach (QListWidgetItem *i, ui->lwUsers->selectedItems())
-            l << i->text();
-    if (l.isEmpty())
-        onAddLogToGui("Sended public server file", Qt::black);
+    QByteArray block;
+    QDataStream out(&block, QIODevice::WriteOnly);
+    out << (quint16)0;
+    if (ui->cbToAll->isChecked())
+        out << (quint8)MyClient::comFileToAll;
     else
-        onAddLogToGui("Sended private server file to "+l.join(","), Qt::black);
+    {
+        out << (quint8)MyClient::comFileToUsers;
+        QString s;
+        foreach (QListWidgetItem *i, ui->lwUsers->selectedItems())
+            s += i->text()+",";
+        s.remove(s.length()-1, 1);
+        out << s;
+        if (s.isEmpty())
+            onAddLogToGui("Sended public MY file", Qt::green);
+        else
+            onAddLogToGui("Sended private MY file to "+s, Qt::green);
+    }
+    out << fileName;
+    out << file.readAll();
+    out.device()->seek(0);
+    out << (quint16)(block.size() - sizeof(quint16));
+    _sok->write(block);
+    ui->pteMessage->setPlainText(block+"---"+file.readAll());
         file.close();
-        emit fileFromGui(file,l);
         onAddFileToGui(file,Qt::blue);
 }
 void Dialog::onAddFileToGui(QFile &file,QColor color)
