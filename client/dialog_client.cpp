@@ -250,6 +250,7 @@ void Dialog::onAddLogToGui(QString text, QColor color)
 {
     ui->lwLog->insertItem(0, QTime::currentTime().toString()+" "+text);
     ui->lwLog->item(0)->setTextColor(color);
+    ui->lwLog->item(0)->backgroundColor().setRgb(255,208,115);
 }
 //oтправляем 0 comFileToAll file size-1
 //отправляем 0 comFileToUsers selectedUsers file size-1
@@ -284,6 +285,7 @@ void Dialog::on_pbAddFile_clicked()
             onAddLogToGui("Sended private MY file to "+s, Qt::green);
     }
     out << fileName;
+
     out << file.readAll();
     out.device()->seek(0);
     out << (quint16)(block.size() - sizeof(quint16));
@@ -292,8 +294,17 @@ void Dialog::on_pbAddFile_clicked()
         file.close();
         onAddFileToGui(file,Qt::blue);
 }
+
 void Dialog::onAddFileToGui(QFile &file,QColor color)
 {
     ui->lwFiles->insertItem(0, QTime::currentTime().toString()+file.fileName());
     ui->lwFiles->item(0)->setTextColor(color);
+    ui->lwFiles->item(0)->backgroundColor().setRgb(255,170,0);
+}
+
+void Dialog::on_lwFiles_doubleClicked(const QModelIndex &index)
+{    QString filename = ui->lwFiles->item(index.row())->text().mid(8,ui->lwFiles->item(index.row())->text().length()-8);
+     QString Patch (filename);
+     QDir Dir(Patch);
+     QDesktopServices::openUrl(QUrl::fromLocalFile(Dir.absolutePath()));
 }

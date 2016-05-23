@@ -30,6 +30,8 @@ private slots:
     void on_pbSend_clicked();
 
     void on_pbAddFile_clicked();
+    void on_lwFiles_doubleClicked(const QModelIndex &index);
+
 signals:
     void fileFromGui(QFile &file, const QStringList &users);//+++++++++++
 private:
