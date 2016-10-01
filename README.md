@@ -1,2 +1,2 @@
 # ServerChat
-С++//Qt-QWebSocket//js-MozWebSocket
+С++//Qt-QTcpSocket
